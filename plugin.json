@@ -1,20 +1,25 @@
 {
-  "Id": "[Id]",
+  "Id": "aeb94d3d-9c39-4917-9cd0-a4cde95433a2",
   "TriggerKeywords": [
-    "[Trigger Keyword]"
+    "spotify"
   ],
-  "Name": "[Name]",
-  "Description": "[Description]",
-  "Author": "[Author Name]",
+  "Name": "Spotify",
+  "Description": "Spotify integration",
+  "Author": "Wox-launcher",
   "Version": "0.0.1",
   "MinWoxVersion": "2.0.0",
   "Runtime": "nodejs",
-  "Website": "[Website]",
+  "Website": "https://github.com/Wox-launcher/Wox.Plugin.Spotify",
   "Entry": "index.js",
   "Icon": "relative:images/app.png",
   "SupportedOS": [
     "windows",
     "linux",
     "darwin"
+  ],
+  "Features": [
+    {
+      "Name": "deepLink"
+    }
   ]
 }

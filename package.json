@@ -1,9 +1,9 @@
 {
-  "name": "replace_me_with_name",
+  "name": "spotify-wox",
   "version": "0.0.1",
   "scripts": {
     "build": "pnpm clean && ncc build src/index.ts -o dist && babel dist --out-dir dist && cp -r images dist && cp -r plugin.json dist",
-    "package": "pnpm build && cd dist && zip -r ../replace_me_with_name.wox *.js *.json images",
+    "package": "pnpm build && cd dist && zip -r ../Wox.Plugin.Spotify.wox *.js *.json images",
     "dev": "nodemon --watch src --watch images --watch plugin.json --ext json,ts,js,mjs,png --exec pnpm run build",
     "clean": "node -e \"var { rmdirSync, existsSync } = require('fs'), path = require('path'); ['./dist'].forEach(fPath => {if (existsSync(path.join(__dirname, fPath))) rmdirSync(path.join(__dirname, fPath), { recursive: true })}); process.exit(0);\"",
     "clean:all": "pnpm run clean && (rm -r ./node_modules || true)",
@@ -12,8 +12,8 @@
   "devDependencies": {
     "@babel/cli": "^7.22.15",
     "@babel/core": "^7.22.20",
-    "@types/jest": "^29.5.12",
     "@babel/preset-env": "^7.22.20",
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.6.0",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
@@ -27,6 +27,8 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@wox-launcher/wox-plugin": "^0.0.67"
+    "@spotify/web-api-ts-sdk": "^1.2.0",
+    "@wox-launcher/wox-plugin": "^0.0.70",
+    "open": "^10.1.0"
   }
 }
