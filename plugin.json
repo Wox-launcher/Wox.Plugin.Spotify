@@ -1,0 +1,20 @@
+{
+  "Id": "[Id]",
+  "TriggerKeywords": [
+    "[Trigger Keyword]"
+  ],
+  "Name": "[Name]",
+  "Description": "[Description]",
+  "Author": "[Author Name]",
+  "Version": "0.0.1",
+  "MinWoxVersion": "2.0.0",
+  "Runtime": "nodejs",
+  "Website": "[Website]",
+  "Entry": "index.js",
+  "Icon": "relative:images/app.png",
+  "SupportedOS": [
+    "windows",
+    "linux",
+    "darwin"
+  ]
+}
