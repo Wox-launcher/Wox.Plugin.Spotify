@@ -1,3 +1,3 @@
-# Wox.Plugin.Template.Nodejs
+A plugin for [Wox](https://github.com/Wox-launcher/Wox) that allows you to control Spotify.
 
-Plugin template for nodejs plugin
+![preview](https://raw.githubusercontent.com/Wox-launcher/Wox.Plugin.Spotify/main/preview.png)

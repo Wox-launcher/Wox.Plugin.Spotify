@@ -29,6 +29,7 @@
   "dependencies": {
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@wox-launcher/wox-plugin": "^0.0.70",
+    "axios": "^1.7.2",
     "open": "^10.1.0"
   }
 }

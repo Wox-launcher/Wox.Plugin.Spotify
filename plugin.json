@@ -17,9 +17,22 @@
     "linux",
     "darwin"
   ],
+  "Commands": [
+    {
+      "Command": "auth",
+      "Description": "Authenticate with Spotify"
+    },
+    {
+      "Command": "devices",
+      "Description": "List available devices"
+    }
+  ],
   "Features": [
     {
       "Name": "deepLink"
+    },
+    {
+      "Name": "ignoreAutoScore"
     }
   ]
 }
