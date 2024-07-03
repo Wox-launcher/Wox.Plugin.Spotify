@@ -10,6 +10,7 @@ let accessToken = {} as AccessToken
 let codeVerifier = ""
 let woxAPI: PublicAPI
 let spotifyAPI: SpotifyApi
+let refreshTokenInterval: NodeJS.Timeout
 
 async function auth() {
   const redirectUri = "wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth"
@@ -35,7 +36,6 @@ async function auth() {
       .replace(/\//g, "_")
   }
 
-
   codeVerifier = generateRandomString(64)
   const params = {
     response_type: "code",
@@ -49,6 +49,60 @@ async function auth() {
   authUrl.search = new URLSearchParams(params).toString()
 
   await open(authUrl.toString())
+}
+
+async function refresh() {
+  const ctx = NewContext()
+  await woxAPI.Log(ctx, "Info", "refreshing access token")
+  if (!accessToken.access_token) {
+    await woxAPI.Log(ctx, "Info", "no access token found")
+    return
+  }
+  if (accessToken.expires === undefined) {
+    await woxAPI.Log(ctx, "Info", "access token has no expiry")
+    return
+  }
+  if (accessToken.expires - Date.now() > 1000 * 60 * 5) {
+    await woxAPI.Log(ctx, "Info", "access token is still valid, expires at " + new Date(accessToken.expires).toISOString())
+    return
+  }
+
+  const url = "https://accounts.spotify.com/api/token"
+  try {
+    const resp = await axios.post<AccessToken>(url, {
+      grant_type: "refresh_token",
+      refresh_token: accessToken.refresh_token,
+      client_id: clientId
+    }, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    })
+
+    await woxAPI.Log(ctx, "Info", `access token refreshed: ${JSON.stringify(resp.data)}`)
+    accessToken = resp.data
+    spotifyAPI = SpotifyApi.withAccessToken(clientId, accessToken)
+  } catch (error) {
+    // if error is axios error, print response data
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (error.response) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await woxAPI.Log(ctx, "Error", `error refreshing access token: ${JSON.stringify(error.response.data)}`)
+    } else {
+      await woxAPI.Log(ctx, "Error", `error refreshing access token: ${error}`)
+    }
+  }
+}
+
+async function startRefreshTokenScheduler(api: PublicAPI) {
+  woxAPI = api
+
+  if (refreshTokenInterval) {
+    clearInterval(refreshTokenInterval)
+  }
+  refreshTokenInterval = setInterval(refresh, 1000 * 60)
 }
 
 async function updateAccessTokenByCode(code: string) {
@@ -98,6 +152,10 @@ async function getDevices() {
   return spotifyAPI.player.getAvailableDevices()
 }
 
+async function activateDevice(deviceId: string) {
+  return spotifyAPI.player.transferPlayback([deviceId])
+}
+
 async function getCurrentlyPlaying() {
   return spotifyAPI.player.getCurrentlyPlayingTrack()
 }
@@ -113,6 +171,10 @@ async function next() {
   return spotifyAPI.player.skipToNext(deviceId)
 }
 
+async function getRecentlyPlayed() {
+  return spotifyAPI.player.getRecentlyPlayedTracks(10, { type: "before", timestamp: Date.now() })
+}
+
 async function previous() {
   const devices = await getDevices()
   const deviceId = devices.devices[0].id
@@ -124,12 +186,49 @@ async function previous() {
   return spotifyAPI.player.skipToPrevious(deviceId)
 }
 
-function isTokenValid() {
-  return accessToken.access_token !== ""
+async function pause() {
+  const devices = await getDevices()
+  const deviceId = devices.devices[0].id
+  if (!deviceId) {
+    await woxAPI.Log(NewContext(), "Error", "no device found")
+    return
+  }
+
+  return spotifyAPI.player.pausePlayback(deviceId)
 }
 
-function updateAPI(apiInstance: PublicAPI) {
-  woxAPI = apiInstance
+async function resume() {
+  const devices = await getDevices()
+  const deviceId = devices.devices[0].id
+  if (!deviceId) {
+    await woxAPI.Log(NewContext(), "Error", "no device found")
+    return
+  }
+
+  return spotifyAPI.player.startResumePlayback(deviceId)
+}
+
+async function play(trackUri: string) {
+  const devices = await getDevices()
+  const deviceId = devices.devices[0].id
+  if (!deviceId) {
+    await woxAPI.Log(NewContext(), "Error", "no device found")
+    return
+  }
+
+  return spotifyAPI.player.startResumePlayback(deviceId, undefined, [trackUri])
+}
+
+async function getUserQueue() {
+  return spotifyAPI.player.getUsersQueue()
+}
+
+async function search(query: string) {
+  return spotifyAPI.search(query, ["album", "artist", "playlist", "track"])
+}
+
+function isTokenValid() {
+  return accessToken.access_token !== "" && accessToken.expires !== undefined && accessToken.expires - Date.now() > 1000 * 60 * 5
 }
 
 export {
@@ -138,8 +237,15 @@ export {
   isTokenValid,
   getDevices,
   updateAccessToken,
-  updateAPI,
   getCurrentlyPlaying,
   next,
-  previous
+  previous,
+  pause,
+  resume,
+  activateDevice,
+  getUserQueue,
+  play,
+  startRefreshTokenScheduler,
+  getRecentlyPlayed,
+  search
 }

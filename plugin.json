@@ -25,6 +25,26 @@
     {
       "Command": "devices",
       "Description": "List available devices"
+    },
+    {
+      "Command": "next",
+      "Description": "Skip to the next track"
+    },
+    {
+      "Command": "prev",
+      "Description": "Skip to the previous track"
+    },
+    {
+      "Command": "queue",
+      "Description": "Current user queue"
+    },
+    {
+      "Command": "recent",
+      "Description": "Recently played tracks"
+    },
+    {
+      "Command": "search",
+      "Description": "Search for a track/album/artist"
     }
   ],
   "Features": [
@@ -33,6 +53,12 @@
     },
     {
       "Name": "ignoreAutoScore"
+    },
+    {
+      "Name": "debounce",
+      "Params": {
+        "intervalMs": "500"
+      }
     }
   ]
 }
