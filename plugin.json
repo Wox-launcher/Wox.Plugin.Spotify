@@ -45,6 +45,10 @@
     {
       "Command": "search",
       "Description": "Search for a track/album/artist"
+    },
+    {
+      "Command": "me",
+      "Description": "Current user profile"
     }
   ],
   "Features": [
@@ -57,7 +61,7 @@
     {
       "Name": "debounce",
       "Params": {
-        "intervalMs": "500"
+        "intervalMs": "200"
       }
     }
   ]

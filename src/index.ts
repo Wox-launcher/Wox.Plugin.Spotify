@@ -13,6 +13,7 @@ import {
   activateDevice,
   auth,
   getCurrentlyPlaying,
+  getCurrentUserInfo,
   getDevices,
   getRecentlyPlayed,
   getUserQueue,
@@ -20,6 +21,7 @@ import {
   next,
   pause,
   play,
+  previous,
   resume,
   search,
   startRefreshTokenScheduler,
@@ -59,38 +61,76 @@ const listDevices = async (ctx: Context, query: Query): Promise<Result[]> => {
   })
 }
 
-const playing = async (ctx: Context): Promise<Result[]> => {
+const playing = async (): Promise<Result[]> => {
   const current = await getCurrentlyPlaying()
   if (current === null) {
     return []
   }
-
   const itemTrack = current.item as Track
-  return [
-    {
-      Title: `Current playing: ${current.item.name}`,
-      SubTitle: `by ${itemTrack.artists.map(artist => artist.name).join(", ")}`,
+  const currentResult = {
+    Title: `${current.item.name}`,
+    SubTitle: `by ${itemTrack.artists.map(artist => artist.name).join(", ")}`,
+    Icon: {
+      ImageType: "relative",
+      ImageData: "images/app.png"
+    },
+    Preview: getPreviewForTrack(itemTrack),
+    Group: "Playing",
+    GroupScore: 100,
+    Actions: [
+      current.is_playing ? {
+          Name: "Pause",
+          Action: async () => {
+            await pause()
+          }
+        } :
+        {
+          Name: "Resume",
+          Action: async () => {
+            await resume()
+          }
+        },
+      {
+        Name: "Next",
+        Action: async () => {
+          await next()
+        }
+      },
+      {
+        Name: "Previous",
+        Action: async () => {
+          await previous()
+        }
+      }
+    ]
+  } as Result
+
+
+  const queue = await getUserQueue()
+  const queueResult = queue.queue.map(item => {
+    const track = item as Track
+    return {
+      Title: track.name,
+      SubTitle: `by ${track.artists.map(artist => artist.name).join(", ")}`,
       Icon: {
         ImageType: "relative",
         ImageData: "images/app.png"
       },
-      Preview: getPreviewForTrack(itemTrack),
+      Group: "Queue",
+      GroupScore: 90,
+      Preview: getPreviewForTrack(track),
       Actions: [
-        current.is_playing ? {
-            Name: "Pause",
-            Action: async () => {
-              await pause()
-            }
-          } :
-          {
-            Name: "Resume",
-            Action: async () => {
-              await resume()
-            }
+        {
+          Name: "Play",
+          Action: async () => {
+            await play(track.uri)
           }
+        }
       ]
-    }
-  ]
+    } as Result
+  })
+
+  return [currentResult, ...queueResult]
 }
 
 const skipToNext = async (): Promise<Result[]> => {
@@ -128,27 +168,260 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
     ]
   }
 
+  let results = [] as Result[]
   const searchResults = await search(query.Search)
-  return searchResults.tracks?.items.map(item => {
-    const track = item as Track
+
+  if (searchResults.playlists) {
+    results = results.concat(searchResults.playlists.items.slice(0, 5).map(item => {
+        return {
+          Title: item.name,
+          Icon: {
+            ImageType: "relative",
+            ImageData: "images/app.png"
+          },
+          Group: "Playlists",
+          GroupScore: 170,
+          Preview: {
+            PreviewType: "markdown",
+            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewProperties: {}
+          },
+          Actions: [
+            {
+              Name: "Play",
+              Action: async () => {
+                await play(item.uri)
+              }
+            }
+          ]
+        }
+      }
+    ))
+  }
+
+
+  if (searchResults.artists) {
+    results = results.concat(searchResults.artists.items.slice(0, 5).map(item => {
+        return {
+          Title: item.name,
+          Icon: {
+            ImageType: "relative",
+            ImageData: "images/app.png"
+          },
+          Group: "Artists",
+          GroupScore: 150,
+          Preview: {
+            PreviewType: "markdown",
+            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewProperties: {
+              "Followers": `${item.followers.total}`,
+              "Popularity": `${item.popularity}`
+            }
+          },
+          Actions: [
+            {
+              Name: "Play",
+              Action: async () => {
+                await play(item.uri)
+              }
+            }
+          ]
+        }
+      }
+    ))
+  }
+
+
+  if (searchResults.tracks) {
+    results = results.concat(searchResults.tracks.items.slice(0, 5).map(item => {
+        const track = item as Track
+        return {
+          Title: track.name,
+          SubTitle: `by ${track.artists.map(artist => artist.name).join(", ")}`,
+          Icon: {
+            ImageType: "relative",
+            ImageData: "images/app.png"
+          },
+          Group: "Tracks",
+          GroupScore: 100,
+          Preview: getPreviewForTrack(track),
+          Actions: [
+            {
+              Name: "Play",
+              Action: async () => {
+                await play(track.uri)
+              }
+            }
+          ]
+        } as Result
+      }
+    ))
+  }
+
+  if (searchResults.albums) {
+    results = results.concat(searchResults.albums.items.slice(0, 5).map(item => {
+        return {
+          Title: item.name,
+          SubTitle: `by ${item.artists.map(artist => artist.name).join(", ")}`,
+          Icon: {
+            ImageType: "relative",
+            ImageData: "images/app.png"
+          },
+          Group: "Albums",
+          GroupScore: 90,
+          Preview: {
+            PreviewType: "markdown",
+            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewProperties: {}
+          },
+          Actions: [
+            {
+              Name: "Play",
+              Action: async () => {
+                await play(item.uri)
+              }
+            }
+          ]
+        }
+      }
+    ))
+  }
+
+  return results
+}
+
+const me = async (): Promise<Result[]> => {
+  const current = await getCurrentUserInfo()
+
+  let results = [] as Result[]
+
+  const profile = await current.profile()
+  results.push({
+    Title: profile.display_name,
+    Icon: {
+      ImageType: "url",
+      ImageData: profile.images[0].url
+    },
+    Group: "User",
+    GroupScore: 100,
+    Preview: {
+      PreviewType: "markdown",
+      PreviewData: ``,
+      PreviewProperties: {
+        "UserId": profile.id,
+        "Email": profile.email
+      }
+    }
+  })
+
+  //playlists
+  const playlists = await current.playlists.playlists()
+  const playlistResults = playlists.items.map(item => {
     return {
-      Title: track.name,
-      SubTitle: `by ${track.artists.map(artist => artist.name).join(", ")}`,
+      Title: item.name,
       Icon: {
         ImageType: "relative",
         ImageData: "images/app.png"
       },
-      Preview: getPreviewForTrack(track),
+      Group: "Playlists",
+      GroupScore: 90,
+      Preview: {
+        PreviewType: "markdown",
+        PreviewData: `![${item.name}](${item.images[0].url})`,
+        PreviewProperties: {}
+      },
       Actions: [
         {
           Name: "Play",
           Action: async () => {
-            await play(track.uri)
+            await play(item.uri)
           }
         }
       ]
-    }
+    } as Result
   })
+  results = results.concat(playlistResults)
+
+  //artists
+  const artists = await current.followedArtists()
+  const artistResults = artists.artists.items.map(item => {
+    return {
+      Title: item.name,
+      Icon: {
+        ImageType: "relative",
+        ImageData: "images/app.png"
+      },
+      Group: "Artists",
+      GroupScore: 80,
+      Score: item.popularity,
+      Preview: {
+        PreviewType: "markdown",
+        PreviewData: `![${item.name}](${item.images[0].url})`,
+        PreviewProperties: {
+          "Followers": `${item.followers.total}`,
+          "Popularity": `${item.popularity}`
+        }
+      },
+      Actions: [
+        {
+          Name: "Play",
+          Action: async () => {
+            await play(item.uri)
+          }
+        }
+      ]
+    } as Result
+  })
+  results = results.concat(artistResults)
+
+  //tracks
+  const tracks = await current.tracks.savedTracks()
+  const trackResults = tracks.items.map(item => {
+    return {
+      Title: item.track.name,
+      SubTitle: `by ${item.track.artists.map(artist => artist.name).join(", ")}`,
+      Icon: {
+        ImageType: "relative",
+        ImageData: "images/app.png"
+      },
+      Group: "Tracks",
+      GroupScore: 70,
+      Preview: getPreviewForTrack(item.track),
+      Actions: [
+        {
+          Name: "Play",
+          Action: async () => {
+            await play(item.track.uri)
+          }
+        }
+      ]
+    } as Result
+  })
+  results = results.concat(trackResults)
+
+
+  //albums
+  const albums = await current.albums.savedAlbums()
+  const albumResults = albums.items.map(item => {
+    return {
+      Title: item.album.name,
+      SubTitle: `by ${item.album.artists.map(artist => artist.name).join(", ")}`,
+      Icon: {
+        ImageType: "relative",
+        ImageData: "images/app.png"
+      },
+      Group: "Albums",
+      GroupScore: 60,
+      Preview: {
+        PreviewType: "markdown",
+        PreviewData: `![${item.album.name}](${item.album.images[0].url})`,
+        PreviewProperties: {}
+      }
+    } as Result
+  })
+  results = results.concat(albumResults)
+
+  return results
 }
 
 // format duration in ms to mm:ss
@@ -209,10 +482,9 @@ export const plugin: Plugin = {
           return
         }
 
-        const resp = await updateAccessTokenByCode(code)
-        await api.SaveSetting(ctx, "access_token", JSON.stringify(resp), false)
-        await api.ChangeQuery(ctx, { QueryType: "input", QueryText: "spotify " })
+        await updateAccessTokenByCode(code)
         await api.ShowApp(ctx)
+        await api.ChangeQuery(ctx, { QueryType: "input", QueryText: "spotify " })
         return
       }
 
@@ -266,7 +538,10 @@ export const plugin: Plugin = {
     if (query.Command === "search") {
       return showSearch(ctx, query)
     }
+    if (query.Command === "me") {
+      return me()
+    }
 
-    return playing(ctx)
+    return playing()
   }
 }

@@ -3,6 +3,7 @@ import open from "open"
 import axios from "axios"
 import { NewContext, PublicAPI } from "@wox-launcher/wox-plugin"
 import { AccessToken, SpotifyApi } from "@spotify/web-api-ts-sdk"
+import moment from "moment"
 
 
 const clientId: string = "8a7e672e219e43fa8d0d73edbfc3d5ab"
@@ -14,7 +15,24 @@ let refreshTokenInterval: NodeJS.Timeout
 
 async function auth() {
   const redirectUri = "wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth"
-  const scope = "user-modify-playback-state user-read-playback-state user-read-currently-playing user-read-playback-position user-read-recently-played user-top-read"
+  const scope =
+    "user-modify-playback-state " +
+    "user-read-playback-state " +
+    "user-read-currently-playing " +
+    "user-read-playback-position " +
+    "user-read-recently-played " +
+    "user-top-read " +
+    "user-read-email " +
+    "user-read-private " +
+    "user-library-read " +
+    "user-library-modify " +
+    "playlist-read-private " +
+    "playlist-read-collaborative " +
+    "playlist-modify-public " +
+    "playlist-modify-private " +
+    "user-follow-read " +
+    "user-follow-modify"
+
   const authUrl = new URL("https://accounts.spotify.com/authorize")
 
   const generateRandomString = (length: number) => {
@@ -63,7 +81,7 @@ async function refresh() {
     return
   }
   if (accessToken.expires - Date.now() > 1000 * 60 * 5) {
-    await woxAPI.Log(ctx, "Info", "access token is still valid, expires at " + new Date(accessToken.expires).toISOString())
+    await woxAPI.Log(ctx, "Info", "access token is still valid, expires at " + moment().format("YYYY-MM-DD HH:mm:ss"))
     return
   }
 
@@ -79,8 +97,10 @@ async function refresh() {
       }
     })
 
+    resp.data.expires = Date.now() + resp.data.expires_in * 1000
     await woxAPI.Log(ctx, "Info", `access token refreshed: ${JSON.stringify(resp.data)}`)
     accessToken = resp.data
+    await woxAPI.SaveSetting(ctx, "access_token", JSON.stringify(resp.data), false)
     spotifyAPI = SpotifyApi.withAccessToken(clientId, accessToken)
   } catch (error) {
     // if error is axios error, print response data
@@ -123,11 +143,11 @@ async function updateAccessTokenByCode(code: string) {
       }
     })
 
+    resp.data.expires = Date.now() + resp.data.expires_in * 1000
     await woxAPI.Log(ctx, "Info", `access token received: ${JSON.stringify(resp.data)}`)
-
     accessToken = resp.data
     spotifyAPI = SpotifyApi.withAccessToken(clientId, accessToken)
-    return accessToken
+    await woxAPI.SaveSetting(ctx, "access_token", JSON.stringify(resp.data), false)
   } catch (error) {
     // if error is axios error, print response data
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -139,7 +159,6 @@ async function updateAccessTokenByCode(code: string) {
     } else {
       await woxAPI.Log(ctx, "Error", `error updating access token: ${error}`)
     }
-    return {} as AccessToken
   }
 }
 
@@ -208,15 +227,41 @@ async function resume() {
   return spotifyAPI.player.startResumePlayback(deviceId)
 }
 
-async function play(trackUri: string) {
-  const devices = await getDevices()
-  const deviceId = devices.devices[0].id
-  if (!deviceId) {
-    await woxAPI.Log(NewContext(), "Error", "no device found")
-    return
+async function play(uri: string) {
+  if (uri.includes("spotify:track:")) {
+    await addTrackToQueue(uri)
+    // wait 500ms for the track to be added to the queue
+    setTimeout(() => {
+      next()
+    }, 500)
   }
-
-  return spotifyAPI.player.startResumePlayback(deviceId, undefined, [trackUri])
+  if (uri.includes("spotify:artist:")) {
+    const devices = await getDevices()
+    const deviceId = devices.devices[0].id
+    if (!deviceId) {
+      await woxAPI.Log(NewContext(), "Error", "no device found")
+      return
+    }
+    await spotifyAPI.player.startResumePlayback(deviceId, uri)
+  }
+  if (uri.includes("spotify:playlist:")) {
+    const devices = await getDevices()
+    const deviceId = devices.devices[0].id
+    if (!deviceId) {
+      await woxAPI.Log(NewContext(), "Error", "no device found")
+      return
+    }
+    await spotifyAPI.player.startResumePlayback(deviceId, uri)
+  }
+  if (uri.includes("spotify:album:")) {
+    const devices = await getDevices()
+    const deviceId = devices.devices[0].id
+    if (!deviceId) {
+      await woxAPI.Log(NewContext(), "Error", "no device found")
+      return
+    }
+    await spotifyAPI.player.startResumePlayback(deviceId, uri)
+  }
 }
 
 async function getUserQueue() {
@@ -225,6 +270,14 @@ async function getUserQueue() {
 
 async function search(query: string) {
   return spotifyAPI.search(query, ["album", "artist", "playlist", "track"])
+}
+
+async function addTrackToQueue(trackUri: string) {
+  return spotifyAPI.player.addItemToPlaybackQueue(trackUri)
+}
+
+async function getCurrentUserInfo() {
+  return spotifyAPI.currentUser
 }
 
 function isTokenValid() {
@@ -247,5 +300,6 @@ export {
   play,
   startRefreshTokenScheduler,
   getRecentlyPlayed,
-  search
+  search,
+  getCurrentUserInfo
 }
