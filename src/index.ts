@@ -1,34 +1,7 @@
-import {
-  Context,
-  MapString,
-  NewContext,
-  Plugin,
-  PluginInitParams,
-  PublicAPI,
-  Query,
-  Result,
-  WoxPreview
-} from "@wox-launcher/wox-plugin"
-import {
-  activateDevice,
-  auth,
-  getCurrentlyPlaying,
-  getCurrentUserInfo,
-  getDevices,
-  getRecentlyPlayed,
-  getUserQueue,
-  isTokenValid,
-  next,
-  pause,
-  play,
-  previous,
-  resume,
-  search,
-  startRefreshTokenScheduler,
-  updateAccessToken,
-  updateAccessTokenByCode
-} from "./spotify"
+import { Context, MapString, NewContext, Plugin, PluginInitParams, PublicAPI, Query, Result, ResultTail, WoxPreview } from "@wox-launcher/wox-plugin"
+import { activateDevice, auth, getCurrentlyPlaying, getCurrentUserInfo, getDevices, getRecentlyPlayed, getUserQueue, isTokenValid, next, pause, play, previous, resume, search, startRefreshTokenScheduler, updateAccessToken, updateAccessTokenByCode } from "./spotify"
 import { AccessToken, Track } from "@spotify/web-api-ts-sdk"
+import { activateImg, authImg, followOrLoveImg, nextImg, pauseImg, playingLottieJson, previousImg, resumeOrPlayImg } from "./asset"
 
 let api: PublicAPI
 
@@ -45,7 +18,7 @@ const listDevices = async (ctx: Context, query: Query): Promise<Result[]> => {
       Actions: [
         {
           Name: "Activate",
-          PreventHideAfterAction: true,
+          Icon: activateImg,
           Action: async () => {
             if (!device.is_active && device.id) {
               await activateDevice(device.id)
@@ -64,8 +37,9 @@ const listDevices = async (ctx: Context, query: Query): Promise<Result[]> => {
 const playing = async (): Promise<Result[]> => {
   const current = await getCurrentlyPlaying()
   if (current === null) {
-    return []
+    return me()
   }
+
   const itemTrack = current.item as Track
   const currentResult = {
     Title: `${current.item.name}`,
@@ -77,27 +51,37 @@ const playing = async (): Promise<Result[]> => {
     Preview: getPreviewForTrack(itemTrack),
     Group: "Playing",
     GroupScore: 100,
+    Tails: [
+      {
+        Type: "image",
+        Image: playingLottieJson
+      } as ResultTail
+    ],
     Actions: [
       current.is_playing ? {
           Name: "Pause",
+          Icon: pauseImg,
           Action: async () => {
             await pause()
           }
         } :
         {
           Name: "Resume",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await resume()
           }
         },
       {
         Name: "Next",
+        Icon: nextImg,
         Action: async () => {
           await next()
         }
       },
       {
         Name: "Previous",
+        Icon: previousImg,
         Action: async () => {
           await previous()
         }
@@ -122,6 +106,7 @@ const playing = async (): Promise<Result[]> => {
       Actions: [
         {
           Name: "Play",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await play(track.uri)
           }
@@ -134,8 +119,45 @@ const playing = async (): Promise<Result[]> => {
 }
 
 const skipToNext = async (): Promise<Result[]> => {
-  await next()
-  return []
+  return [
+    {
+      Title: "Skip to next",
+      Icon: {
+        ImageType: "relative",
+        ImageData: "images/app.png"
+      },
+      Actions: [
+        {
+          Name: "Next",
+          Icon: nextImg,
+          Action: async () => {
+            await next()
+          }
+        }
+      ]
+    }
+  ]
+}
+
+const skipToPrev = async (): Promise<Result[]> => {
+  return [
+    {
+      Title: "Skip to previous",
+      Icon: {
+        ImageType: "relative",
+        ImageData: "images/app.png"
+      },
+      Actions: [
+        {
+          Name: "Previous",
+          Icon: previousImg,
+          Action: async () => {
+            await previous()
+          }
+        }
+      ]
+    }
+  ]
 }
 
 const showRecent = async (): Promise<Result[]> => {
@@ -183,14 +205,23 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
           GroupScore: 170,
           Preview: {
             PreviewType: "markdown",
-            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
             PreviewProperties: {}
           },
           Actions: [
             {
               Name: "Play",
+              Icon: resumeOrPlayImg,
               Action: async () => {
                 await play(item.uri)
+              }
+            },
+            {
+              Name: "Follow",
+              Icon: followOrLoveImg,
+              Action: async () => {
+                const user = await getCurrentUserInfo()
+                await user.playlists.follow(item.id)
               }
             }
           ]
@@ -212,7 +243,7 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
           GroupScore: 150,
           Preview: {
             PreviewType: "markdown",
-            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
             PreviewProperties: {
               "Followers": `${item.followers.total}`,
               "Popularity": `${item.popularity}`
@@ -221,8 +252,17 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
           Actions: [
             {
               Name: "Play",
+              Icon: resumeOrPlayImg,
               Action: async () => {
                 await play(item.uri)
+              }
+            },
+            {
+              Name: "Follow",
+              Icon: followOrLoveImg,
+              Action: async () => {
+                const user = await getCurrentUserInfo()
+                await user.followArtistsOrUsers([item.id], "artist")
               }
             }
           ]
@@ -271,7 +311,7 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
           GroupScore: 90,
           Preview: {
             PreviewType: "markdown",
-            PreviewData: `![${item.name}](${item.images[0].url})`,
+            PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
             PreviewProperties: {}
           },
           Actions: [
@@ -300,7 +340,7 @@ const me = async (): Promise<Result[]> => {
     Title: profile.display_name,
     Icon: {
       ImageType: "url",
-      ImageData: profile.images[0].url
+      ImageData: profile.images.length > 0 ? profile.images[0].url : ""
     },
     Group: "User",
     GroupScore: 100,
@@ -327,12 +367,13 @@ const me = async (): Promise<Result[]> => {
       GroupScore: 90,
       Preview: {
         PreviewType: "markdown",
-        PreviewData: `![${item.name}](${item.images[0].url})`,
+        PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
         PreviewProperties: {}
       },
       Actions: [
         {
           Name: "Play",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await play(item.uri)
           }
@@ -356,7 +397,7 @@ const me = async (): Promise<Result[]> => {
       Score: item.popularity,
       Preview: {
         PreviewType: "markdown",
-        PreviewData: `![${item.name}](${item.images[0].url})`,
+        PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
         PreviewProperties: {
           "Followers": `${item.followers.total}`,
           "Popularity": `${item.popularity}`
@@ -365,6 +406,7 @@ const me = async (): Promise<Result[]> => {
       Actions: [
         {
           Name: "Play",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await play(item.uri)
           }
@@ -390,6 +432,7 @@ const me = async (): Promise<Result[]> => {
       Actions: [
         {
           Name: "Play",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await play(item.track.uri)
           }
@@ -414,9 +457,18 @@ const me = async (): Promise<Result[]> => {
       GroupScore: 60,
       Preview: {
         PreviewType: "markdown",
-        PreviewData: `![${item.album.name}](${item.album.images[0].url})`,
+        PreviewData: `${item.album.images.length > 0 ? `![${item.album.name}](${item.album.images[0].url})` : ""}`,
         PreviewProperties: {}
-      }
+      },
+      Actions: [
+        {
+          Name: "Play",
+          Icon: resumeOrPlayImg,
+          Action: async () => {
+            await play(item.album.uri)
+          }
+        }
+      ]
     } as Result
   })
   results = results.concat(albumResults)
@@ -434,7 +486,7 @@ const formatDuration = (ms: number): string => {
 const getPreviewForTrack = (track: Track): WoxPreview => {
   return {
     PreviewType: "markdown",
-    PreviewData: `![${track.name}](${track.album.images[0].url})`,
+    PreviewData: `${track.album.images.length > 0 ? `![${track.album.name}](${track.album.images[0].url})` : ""}`,
     PreviewProperties: {
       "Album": track.album.name,
       "Duration": formatDuration(track.duration_ms),
@@ -458,6 +510,7 @@ const userQueue = async (): Promise<Result[]> => {
       Actions: [
         {
           Name: "Play",
+          Icon: resumeOrPlayImg,
           Action: async () => {
             await api.Log(NewContext(), "Info", `playing ${track.uri}`)
             await play(track.uri)
@@ -514,6 +567,7 @@ export const plugin: Plugin = {
           Actions: [
             {
               Name: "Auth",
+              Icon: authImg,
               Action: async () => {
                 await auth()
               }
@@ -528,6 +582,9 @@ export const plugin: Plugin = {
     }
     if (query.Command === "next") {
       return skipToNext()
+    }
+    if (query.Command == "prev") {
+      return skipToPrev()
     }
     if (query.Command === "queue") {
       return userQueue()
