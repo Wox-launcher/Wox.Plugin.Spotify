@@ -35,6 +35,10 @@
       "Description": "Skip to the previous track"
     },
     {
+      "Command": "toggle",
+      "Description": "Toggle play/resume on current track"
+    },
+    {
       "Command": "queue",
       "Description": "Current user queue"
     },

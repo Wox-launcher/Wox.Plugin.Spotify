@@ -1,7 +1,7 @@
-import { Context, MapString, NewContext, Plugin, PluginInitParams, PublicAPI, Query, Result, ResultTail, WoxPreview } from "@wox-launcher/wox-plugin"
+import { Context, MapString, NewContext, Plugin, PluginInitParams, PublicAPI, Query, Result, WoxPreview } from "@wox-launcher/wox-plugin"
 import { activateDevice, auth, getCurrentlyPlaying, getCurrentUserInfo, getDevices, getRecentlyPlayed, getUserQueue, isTokenValid, next, pause, play, previous, resume, search, startRefreshTokenScheduler, updateAccessToken, updateAccessTokenByCode } from "./spotify"
 import { AccessToken, Track } from "@spotify/web-api-ts-sdk"
-import { activateImg, authImg, followOrLoveImg, nextImg, pauseImg, playingLottieJson, previousImg, resumeOrPlayImg } from "./asset"
+import { activateImg, authImg, followOrLoveImg, nextImg, pauseImg, playingLottieImg, previousImg, resumeOrPlayImg } from "./asset"
 
 let api: PublicAPI
 
@@ -44,19 +44,10 @@ const playing = async (): Promise<Result[]> => {
   const currentResult = {
     Title: `${current.item.name}`,
     SubTitle: `by ${itemTrack.artists.map(artist => artist.name).join(", ")}`,
-    Icon: {
-      ImageType: "relative",
-      ImageData: "images/app.png"
-    },
+    Icon: playingLottieImg,
     Preview: getPreviewForTrack(itemTrack),
     Group: "Playing",
     GroupScore: 100,
-    Tails: [
-      {
-        Type: "image",
-        Image: playingLottieJson
-      } as ResultTail
-    ],
     Actions: [
       current.is_playing ? {
           Name: "Pause",
@@ -330,6 +321,53 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
   return results
 }
 
+const toggle = async (): Promise<Result[]> => {
+  const current = await getCurrentlyPlaying()
+  if (current === null) {
+    return []
+  }
+
+  if (current.is_playing) {
+    return [
+      {
+        Title: "Pause",
+        Icon: {
+          ImageType: "relative",
+          ImageData: "images/app.png"
+        },
+        Actions: [
+          {
+            Name: "Pause",
+            Icon: pauseImg,
+            Action: async () => {
+              await pause()
+            }
+          }
+        ]
+      }
+    ]
+  } else {
+    return [
+      {
+        Title: "Resume",
+        Icon: {
+          ImageType: "relative",
+          ImageData: "images/app.png"
+        },
+        Actions: [
+          {
+            Name: "Resume",
+            Icon: resumeOrPlayImg,
+            Action: async () => {
+              await resume()
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+
 const me = async (): Promise<Result[]> => {
   const current = await getCurrentUserInfo()
 
@@ -597,6 +635,9 @@ export const plugin: Plugin = {
     }
     if (query.Command === "me") {
       return me()
+    }
+    if (query.Command === "toggle") {
+      return toggle()
     }
 
     return playing()
