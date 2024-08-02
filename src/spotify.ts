@@ -284,6 +284,10 @@ function isTokenValid() {
   return accessToken.access_token !== "" && accessToken.expires !== undefined && accessToken.expires - Date.now() > 1000 * 60 * 5
 }
 
+function stopRefreshTokenScheduler() {
+  clearInterval(refreshTokenInterval)
+}
+
 export {
   auth,
   updateAccessTokenByCode,
@@ -301,5 +305,6 @@ export {
   startRefreshTokenScheduler,
   getRecentlyPlayed,
   search,
-  getCurrentUserInfo
+  getCurrentUserInfo,
+  stopRefreshTokenScheduler
 }

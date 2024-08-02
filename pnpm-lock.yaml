@@ -9,8 +9,8 @@ dependencies:
     specifier: ^1.2.0
     version: 1.2.0
   '@wox-launcher/wox-plugin':
-    specifier: ^0.0.74
-    version: 0.0.74
+    specifier: ^0.0.77
+    version: 0.0.77
   axios:
     specifier: ^1.7.2
     version: 1.7.2
@@ -2089,8 +2089,8 @@ packages:
     hasBin: true
     dev: true
 
-  /@wox-launcher/wox-plugin@0.0.74:
-    resolution: {integrity: sha512-ABYeasR4qJm/WE8BUbJu2wUrjfGFOcRu9pXAHyyJRMUhL8us2semIsbOTzzAWfEJTwVkJCUC4KCV9hwtJKmC3Q==}
+  /@wox-launcher/wox-plugin@0.0.77:
+    resolution: {integrity: sha512-UEehmH5Q2x4YbgIBfqFPvUKcvoj+61Vc8UHT5Im8aJCidUE51JE5sdp2w0vcyarbhgkGKgynI0hzz4rY2GNebw==}
     dev: false
 
   /acorn-jsx@5.3.2(acorn@8.10.0):

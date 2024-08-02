@@ -1,5 +1,5 @@
 import { Context, MapString, NewContext, Plugin, PluginInitParams, PublicAPI, Query, Result, WoxPreview } from "@wox-launcher/wox-plugin"
-import { activateDevice, auth, getCurrentlyPlaying, getCurrentUserInfo, getDevices, getRecentlyPlayed, getUserQueue, isTokenValid, next, pause, play, previous, resume, search, startRefreshTokenScheduler, updateAccessToken, updateAccessTokenByCode } from "./spotify"
+import { activateDevice, auth, getCurrentlyPlaying, getCurrentUserInfo, getDevices, getRecentlyPlayed, getUserQueue, isTokenValid, next, pause, play, previous, resume, search, startRefreshTokenScheduler, stopRefreshTokenScheduler, updateAccessToken, updateAccessTokenByCode } from "./spotify"
 import { AccessToken, Track } from "@spotify/web-api-ts-sdk"
 import { activateImg, authImg, followOrLoveImg, nextImg, pauseImg, playingLottieImg, previousImg, resumeOrPlayImg } from "./asset"
 
@@ -590,6 +590,11 @@ export const plugin: Plugin = {
         return
       }
     }
+
+    await api.OnUnload(ctx, async () => {
+      await api.Log(ctx, "Info", "unloading plugin")
+      stopRefreshTokenScheduler()
+    })
   },
 
   query: async (ctx: Context, query: Query): Promise<Result[]> => {
