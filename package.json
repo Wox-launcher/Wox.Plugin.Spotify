@@ -1,6 +1,6 @@
 {
   "name": "spotify-wox",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "build": "pnpm clean && ncc build src/index.ts -o dist && babel dist --out-dir dist && cp -r images dist && cp -r plugin.json dist",
     "package": "pnpm build && cd dist && zip -r ../Wox.Plugin.Spotify.wox *.js *.json images",
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@spotify/web-api-ts-sdk": "^1.2.0",
-    "@wox-launcher/wox-plugin": "^0.0.77",
+    "@wox-launcher/wox-plugin": "^0.0.131",
     "axios": "^1.7.2",
     "moment": "^2.30.1",
     "open": "^10.1.0"

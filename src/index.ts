@@ -564,22 +564,22 @@ export const plugin: Plugin = {
     api = initParams.API
     await startRefreshTokenScheduler(api)
 
-    await api.OnDeepLink(ctx, async (params: MapString) => {
+    await api.OnDeepLink(ctx, async (callbackCtx: Context, params: MapString) => {
       if (params.action === "spotify-auth") {
-        await api.Log(ctx, "Info", "spotify auth deeplink received")
+        await api.Log(callbackCtx, "Info", "spotify auth deeplink received")
         const code = params.code || ""
         if (code === "") {
-          await api.Log(ctx, "Error", "no code received")
+          await api.Log(callbackCtx, "Error", "no code received")
           return
         }
 
         await updateAccessTokenByCode(code)
-        await api.ShowApp(ctx)
-        await api.ChangeQuery(ctx, { QueryType: "input", QueryText: "spotify " })
+        await api.ShowApp(callbackCtx)
+        await api.ChangeQuery(callbackCtx, { QueryType: "input", QueryText: "spotify " })
         return
       }
 
-      await api.Log(ctx, "Info", `unknown deeplink received, ${JSON.stringify(params)}`)
+      await api.Log(callbackCtx, "Info", `unknown deeplink received, ${JSON.stringify(params)}`)
     })
 
     const token = await api.GetSetting(ctx, "access_token")
@@ -591,8 +591,8 @@ export const plugin: Plugin = {
       }
     }
 
-    await api.OnUnload(ctx, async () => {
-      await api.Log(ctx, "Info", "unloading plugin")
+    await api.OnUnload(ctx, async (unloadCtx: Context) => {
+      await api.Log(unloadCtx, "Info", "unloading plugin")
       stopRefreshTokenScheduler()
     })
   },
