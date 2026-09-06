@@ -1,5 +1,25 @@
 import { Context, MapString, NewContext, Plugin, PluginInitParams, PublicAPI, Query, Result, WoxPreview } from "@wox-launcher/wox-plugin"
-import { activateDevice, auth, getCurrentlyPlaying, getCurrentUserInfo, getDevices, getRecentlyPlayed, getUserQueue, isTokenValid, next, pause, play, previous, resume, search, startRefreshTokenScheduler, stopRefreshTokenScheduler, updateAccessToken, updateAccessTokenByCode } from "./spotify"
+import {
+  activateDevice,
+  auth,
+  clearAccessToken,
+  getCurrentlyPlaying,
+  getCurrentUserInfo,
+  getDevices,
+  getRecentlyPlayed,
+  getUserQueue,
+  isTokenValid,
+  next,
+  pause,
+  play,
+  previous,
+  resume,
+  search,
+  startRefreshTokenScheduler,
+  stopRefreshTokenScheduler,
+  updateAccessToken,
+  updateAccessTokenByCode
+} from "./spotify"
 import { AccessToken, Track } from "@spotify/web-api-ts-sdk"
 import { activateImg, authImg, followOrLoveImg, nextImg, pauseImg, playingLottieImg, previousImg, resumeOrPlayImg } from "./asset"
 
@@ -49,20 +69,21 @@ const playing = async (): Promise<Result[]> => {
     Group: "Playing",
     GroupScore: 100,
     Actions: [
-      current.is_playing ? {
-          Name: "Pause",
-          Icon: pauseImg,
-          Action: async () => {
-            await pause()
+      current.is_playing
+        ? {
+            Name: "Pause",
+            Icon: pauseImg,
+            Action: async () => {
+              await pause()
+            }
           }
-        } :
-        {
-          Name: "Resume",
-          Icon: resumeOrPlayImg,
-          Action: async () => {
-            await resume()
-          }
-        },
+        : {
+            Name: "Resume",
+            Icon: resumeOrPlayImg,
+            Action: async () => {
+              await resume()
+            }
+          },
       {
         Name: "Next",
         Icon: nextImg,
@@ -79,7 +100,6 @@ const playing = async (): Promise<Result[]> => {
       }
     ]
   } as Result
-
 
   const queue = await getUserQueue()
   const queueResult = queue.queue.map(item => {
@@ -185,7 +205,8 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
   const searchResults = await search(query.Search)
 
   if (searchResults.playlists) {
-    results = results.concat(searchResults.playlists.items.slice(0, 5).map(item => {
+    results = results.concat(
+      searchResults.playlists.items.slice(0, 5).map(item => {
         return {
           Title: item.name,
           Icon: {
@@ -217,13 +238,13 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
             }
           ]
         }
-      }
-    ))
+      })
+    )
   }
 
-
   if (searchResults.artists) {
-    results = results.concat(searchResults.artists.items.slice(0, 5).map(item => {
+    results = results.concat(
+      searchResults.artists.items.slice(0, 5).map(item => {
         return {
           Title: item.name,
           Icon: {
@@ -236,8 +257,8 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
             PreviewType: "markdown",
             PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
             PreviewProperties: {
-              "Followers": `${item.followers.total}`,
-              "Popularity": `${item.popularity}`
+              Followers: `${item.followers.total}`,
+              Popularity: `${item.popularity}`
             }
           },
           Actions: [
@@ -258,13 +279,13 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
             }
           ]
         }
-      }
-    ))
+      })
+    )
   }
 
-
   if (searchResults.tracks) {
-    results = results.concat(searchResults.tracks.items.slice(0, 5).map(item => {
+    results = results.concat(
+      searchResults.tracks.items.slice(0, 5).map(item => {
         const track = item as Track
         return {
           Title: track.name,
@@ -285,12 +306,13 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
             }
           ]
         } as Result
-      }
-    ))
+      })
+    )
   }
 
   if (searchResults.albums) {
-    results = results.concat(searchResults.albums.items.slice(0, 5).map(item => {
+    results = results.concat(
+      searchResults.albums.items.slice(0, 5).map(item => {
         return {
           Title: item.name,
           SubTitle: `by ${item.artists.map(artist => artist.name).join(", ")}`,
@@ -314,8 +336,8 @@ const showSearch = async (ctx: Context, query: Query): Promise<Result[]> => {
             }
           ]
         }
-      }
-    ))
+      })
+    )
   }
 
   return results
@@ -386,8 +408,8 @@ const me = async (): Promise<Result[]> => {
       PreviewType: "markdown",
       PreviewData: ``,
       PreviewProperties: {
-        "UserId": profile.id,
-        "Email": profile.email
+        UserId: profile.id,
+        Email: profile.email
       }
     }
   })
@@ -437,8 +459,8 @@ const me = async (): Promise<Result[]> => {
         PreviewType: "markdown",
         PreviewData: `${item.images.length > 0 ? `![${item.name}](${item.images[0].url})` : ""}`,
         PreviewProperties: {
-          "Followers": `${item.followers.total}`,
-          "Popularity": `${item.popularity}`
+          Followers: `${item.followers.total}`,
+          Popularity: `${item.popularity}`
         }
       },
       Actions: [
@@ -479,7 +501,6 @@ const me = async (): Promise<Result[]> => {
     } as Result
   })
   results = results.concat(trackResults)
-
 
   //albums
   const albums = await current.albums.savedAlbums()
@@ -526,9 +547,9 @@ const getPreviewForTrack = (track: Track): WoxPreview => {
     PreviewType: "markdown",
     PreviewData: `${track.album.images.length > 0 ? `![${track.album.name}](${track.album.images[0].url})` : ""}`,
     PreviewProperties: {
-      "Album": track.album.name,
-      "Duration": formatDuration(track.duration_ms),
-      "Release": track.album.release_date
+      Album: track.album.name,
+      Duration: formatDuration(track.duration_ms),
+      Release: track.album.release_date
     }
   }
 }
@@ -587,9 +608,15 @@ export const plugin: Plugin = {
       const accessToken = JSON.parse(token) as AccessToken
       if (accessToken.access_token !== "") {
         await updateAccessToken(accessToken)
-        return
       }
     }
+
+    await api.OnSettingChanged(ctx, async (settingCtx: Context, key: string) => {
+      if (key === "clientId") {
+        clearAccessToken()
+        await api.SaveSetting(settingCtx, "access_token", "", false)
+      }
+    })
 
     await api.OnUnload(ctx, async (unloadCtx: Context) => {
       await api.Log(unloadCtx, "Info", "unloading plugin")

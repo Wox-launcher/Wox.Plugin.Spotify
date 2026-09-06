@@ -7,7 +7,7 @@
   "Description": "Spotify integration",
   "Author": "Wox-launcher",
   "Version": "0.0.2",
-  "MinWoxVersion": "2.0.0",
+  "MinWoxVersion": "2.0.3",
   "Runtime": "nodejs",
   "Website": "https://github.com/Wox-launcher/Wox.Plugin.Spotify",
   "Entry": "index.js",
@@ -55,6 +55,39 @@
       "Description": "Current user profile"
     }
   ],
+  "SettingDefinitions": [
+    {
+      "Type": "textbox",
+      "Value": {
+        "Key": "clientId",
+        "Label": "Spotify Client ID",
+        "Tooltip": "Create an app at [https://developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), then paste the app Client ID. Here is the sample:\n1. **App Name**: Wox\n2. **App description**: Wox spotify plugin\n3. **Website**: https://github.com/Wox-launcher/Wox\n4. **Redirect URIs**:\n  1. wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-access-token \n  2. wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth\n5. **Which API/SDKs are you planning to use**: Web API",
+        "DefaultValue": "",
+        "MaxLines": 1,
+        "Validators": [
+          {
+            "Type": "not_empty"
+          }
+        ],
+        "Style": {
+          "Width": 520
+        }
+      }
+    }
+  ],
+  "QueryRequirements": {
+    "AnyQuery": [
+      {
+        "SettingKey": "clientId",
+        "Validators": [
+          {
+            "Type": "not_empty"
+          }
+        ],
+        "Message": "Spotify Client ID is required. Create a Spotify app and paste its Client ID in this plugin's settings."
+      }
+    ]
+  },
   "Features": [
     {
       "Name": "deepLink"

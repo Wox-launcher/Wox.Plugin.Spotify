@@ -1,6 +1,8 @@
 import type { Context, MapString, PluginInitParams, PublicAPI } from "@wox-launcher/wox-plugin"
+import { readFileSync } from "fs"
+import path from "path"
 import { plugin } from "../index"
-import { startRefreshTokenScheduler, updateAccessTokenByCode } from "../spotify"
+import { clearAccessToken, startRefreshTokenScheduler, updateAccessTokenByCode } from "../spotify"
 
 jest.mock("@wox-launcher/wox-plugin", () => ({
   NewContext: () => {
@@ -33,6 +35,7 @@ jest.mock("../spotify", () => ({
   search: jest.fn(),
   startRefreshTokenScheduler: jest.fn().mockResolvedValue(undefined),
   stopRefreshTokenScheduler: jest.fn(),
+  clearAccessToken: jest.fn(),
   updateAccessToken: jest.fn().mockResolvedValue(undefined),
   updateAccessTokenByCode: jest.fn().mockResolvedValue(undefined)
 }))
@@ -55,6 +58,8 @@ const makeAPI = () => {
     Log: jest.fn().mockResolvedValue(undefined),
     ShowApp: jest.fn().mockResolvedValue(undefined),
     ChangeQuery: jest.fn().mockResolvedValue(undefined),
+    SaveSetting: jest.fn().mockResolvedValue(undefined),
+    OnSettingChanged: jest.fn().mockResolvedValue(undefined),
     OnUnload: jest.fn().mockResolvedValue(undefined)
   }
 
@@ -74,4 +79,32 @@ test("handles Spotify auth deeplink arguments from the host callback", async () 
   expect(updateAccessTokenByCode).toHaveBeenCalledWith("auth-code")
   expect(api.ShowApp).toHaveBeenCalled()
   expect(api.ChangeQuery).toHaveBeenCalledWith(expect.anything(), { QueryType: "input", QueryText: "spotify " })
+})
+
+test("requires Spotify client ID before any query", () => {
+  const metadata = JSON.parse(readFileSync(path.join(__dirname, "../../plugin.json"), "utf8"))
+
+  expect(metadata.MinWoxVersion).toBe("2.0.3")
+  expect(metadata.QueryRequirements).toEqual({
+    AnyQuery: [
+      {
+        SettingKey: "clientId",
+        Validators: [{ Type: "not_empty" }],
+        Message: "Spotify Client ID is required. Create a Spotify app and paste its Client ID in this plugin's settings."
+      }
+    ]
+  })
+})
+
+test("clears stored token when Spotify client ID changes", async () => {
+  const api = makeAPI()
+  const initParams: PluginInitParams = { API: api, PluginDirectory: "/tmp/plugin" }
+
+  await plugin.init(makeContext({ traceId: "init-trace" }), initParams)
+  const callback = api.OnSettingChanged.mock.calls[0][1] as (ctx: Context, key: string, value: string) => Promise<void>
+
+  await callback(makeContext({ traceId: "setting-trace" }), "clientId", "new-client-id")
+
+  expect(clearAccessToken).toHaveBeenCalled()
+  expect(api.SaveSetting).toHaveBeenCalledWith(expect.anything(), "access_token", "", false)
 })

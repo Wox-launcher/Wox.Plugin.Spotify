@@ -6,15 +6,35 @@ import { AccessToken, SpotifyApi } from "@spotify/web-api-ts-sdk"
 import moment from "moment"
 
 
-const clientId: string = "8a7e672e219e43fa8d0d73edbfc3d5ab"
+const clientIdSettingKey = "clientId"
+const redirectUri = "wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth"
 let accessToken = {} as AccessToken
 let codeVerifier = ""
 let woxAPI: PublicAPI
 let spotifyAPI: SpotifyApi
 let refreshTokenInterval: NodeJS.Timeout
 
+async function getConfiguredClientId(ctx = NewContext()): Promise<string> {
+  return (await woxAPI.GetSetting(ctx, clientIdSettingKey)).trim()
+}
+
+async function requireConfiguredClientId(ctx = NewContext()): Promise<string | undefined> {
+  const clientId = await getConfiguredClientId(ctx)
+  if (clientId === "") {
+    await woxAPI.Log(ctx, "Error", "Spotify client ID is not configured")
+    return undefined
+  }
+
+  return clientId
+}
+
 async function auth() {
-  const redirectUri = "wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth"
+  const ctx = NewContext()
+  const clientId = await requireConfiguredClientId(ctx)
+  if (!clientId) {
+    return
+  }
+
   const scope =
     "user-modify-playback-state " +
     "user-read-playback-state " +
@@ -84,6 +104,10 @@ async function refresh() {
     await woxAPI.Log(ctx, "Info", "access token is still valid, expires at " + moment().format("YYYY-MM-DD HH:mm:ss"))
     return
   }
+  const clientId = await requireConfiguredClientId(ctx)
+  if (!clientId) {
+    return
+  }
 
   const url = "https://accounts.spotify.com/api/token"
   try {
@@ -128,13 +152,17 @@ async function startRefreshTokenScheduler(api: PublicAPI) {
 async function updateAccessTokenByCode(code: string) {
   const ctx = NewContext()
   await woxAPI.Log(ctx, "Info", "updating access token, code = " + code)
+  const clientId = await requireConfiguredClientId(ctx)
+  if (!clientId) {
+    return
+  }
 
   const url = "https://accounts.spotify.com/api/token"
   try {
     const resp = await axios.post<AccessToken>(url, {
       grant_type: "authorization_code",
       code,
-      redirect_uri: "wox://plugin/aeb94d3d-9c39-4917-9cd0-a4cde95433a2?action=spotify-auth",
+      redirect_uri: redirectUri,
       client_id: clientId,
       code_verifier: codeVerifier
     }, {
@@ -163,8 +191,17 @@ async function updateAccessTokenByCode(code: string) {
 }
 
 async function updateAccessToken(token: AccessToken) {
+  const clientId = await requireConfiguredClientId()
+  if (!clientId) {
+    return
+  }
+
   accessToken = token
   spotifyAPI = SpotifyApi.withAccessToken(clientId, accessToken)
+}
+
+function clearAccessToken() {
+  accessToken = {} as AccessToken
 }
 
 async function getDevices() {
@@ -306,5 +343,6 @@ export {
   getRecentlyPlayed,
   search,
   getCurrentUserInfo,
-  stopRefreshTokenScheduler
+  stopRefreshTokenScheduler,
+  clearAccessToken
 }
