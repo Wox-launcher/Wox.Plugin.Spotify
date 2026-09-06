@@ -2,10 +2,10 @@
   "name": "spotify-wox",
   "version": "0.0.2",
   "scripts": {
-    "build": "pnpm clean && ncc build src/index.ts -o dist && babel dist --out-dir dist && cp -r images dist && cp -r plugin.json dist",
-    "package": "pnpm build && cd dist && zip -r ../Wox.Plugin.Spotify.wox *.js *.json images",
+    "build": "pnpm clean && ncc build src/index.ts -o dist && babel dist --out-dir dist && node -e \"const { cpSync } = require('fs'); cpSync('images', 'dist/images', { recursive: true }); cpSync('plugin.json', 'dist/plugin.json');\"",
+    "package": "pnpm build && node -e \"const { execSync } = require('child_process'); const { existsSync, unlinkSync, renameSync } = require('fs'); const wox = 'Wox.Plugin.Spotify.wox'; const zip = 'Wox.Plugin.Spotify.zip'; if (existsSync(wox)) unlinkSync(wox); if (existsSync(zip)) unlinkSync(zip); execSync('tar -C dist -a -cf ' + zip + ' index.js plugin.json images', { stdio: 'inherit' }); renameSync(zip, wox);\"",
     "dev": "nodemon --watch src --watch images --watch plugin.json --ext json,ts,js,mjs,png --exec pnpm run build",
-    "clean": "node -e \"var { rmdirSync, existsSync } = require('fs'), path = require('path'); ['./dist'].forEach(fPath => {if (existsSync(path.join(__dirname, fPath))) rmdirSync(path.join(__dirname, fPath), { recursive: true })}); process.exit(0);\"",
+    "clean": "node -e \"var { rmSync, existsSync } = require('fs'), path = require('path'); ['./dist'].forEach(fPath => {if (existsSync(path.join(__dirname, fPath))) rmSync(path.join(__dirname, fPath), { recursive: true, force: true })}); process.exit(0);\"",
     "clean:all": "pnpm run clean && (rm -r ./node_modules || true)",
     "reinstall": "pnpm run clean:all && pnpm install"
   },

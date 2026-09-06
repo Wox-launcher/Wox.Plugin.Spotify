@@ -6,7 +6,7 @@
   "Name": "Spotify",
   "Description": "Spotify integration",
   "Author": "Wox-launcher",
-  "Version": "0.0.2",
+  "Version": "0.0.3",
   "MinWoxVersion": "2.0.3",
   "Runtime": "nodejs",
   "Website": "https://github.com/Wox-launcher/Wox.Plugin.Spotify",
